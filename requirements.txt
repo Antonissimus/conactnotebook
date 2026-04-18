@@ -1,2 +1,9 @@
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
+sqlalchemy>=2.0.0
+aiosqlite
+pydantic[email]
+pytest
+pytest-asyncio
+httpx
+ruff

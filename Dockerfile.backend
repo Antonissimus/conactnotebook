@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 
 ENV SERVE_STATIC=0
-ENV DATABASE_PATH=/data/contacts.db
+ENV DATABASE_URL=sqlite+aiosqlite:////data/contacts.db
 
 EXPOSE 8000
 

@@ -1,7 +1,9 @@
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -11,11 +13,43 @@ from app.db import init_db
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    init_db()
+    await init_db()
     yield
 
 
 app = FastAPI(title="Contact Manager", lifespan=lifespan)
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": {
+                "code": "validation_error",
+                "message": "Request validation failed",
+                "details": [
+                    {
+                        "field": ".".join(map(str, error["loc"][1:])),
+                        "message": error["msg"],
+                        "code": error["type"],
+                    }
+                    for error in exc.errors()
+                ],
+            }
+        },
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": {
+                "code": "internal_error",
+                "message": "An unexpected error occurred",
+            }
+        },
+    )
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

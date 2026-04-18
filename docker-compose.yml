@@ -5,9 +5,10 @@ services:
       dockerfile: Dockerfile.backend
     environment:
       SERVE_STATIC: "0"
-      DATABASE_PATH: /data/contacts.db
+      # Must match volume mount; default app/db.py used DATABASE_URL only and ignored DATABASE_PATH.
+      DATABASE_URL: sqlite+aiosqlite:////data/contacts.db
     volumes:
-      - ./contacts.db:/data/contacts.db
+    - ./contacts.db:/data/contacts.db
     expose:
       - "8000"
 

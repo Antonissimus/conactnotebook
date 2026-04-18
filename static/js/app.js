@@ -1,4 +1,5 @@
-const API_BASE = "";
+import * as api from "./api.js";
+import * as utils from "./utils.js";
 
 const form = document.getElementById("contact-form");
 const contactIdInput = document.getElementById("contact-id");
@@ -20,29 +21,11 @@ const toastContainer = document.getElementById("toast-container");
 /** Cached contacts from API; filtering is client-side. */
 let allContacts = [];
 
-function apiUrl(path) {
-  return `${API_BASE}${path}`;
-}
-
 /** Hydrate Lucide icons (static markup + rows after load). */
 function refreshIcons() {
   if (typeof lucide !== "undefined" && lucide.createIcons) {
     lucide.createIcons();
   }
-}
-
-function iconEl(name) {
-  const i = document.createElement("i");
-  i.setAttribute("data-lucide", name);
-  i.className = "btn-icon";
-  i.setAttribute("aria-hidden", "true");
-  return i;
-}
-
-function spanLabel(text) {
-  const s = document.createElement("span");
-  s.textContent = text;
-  return s;
 }
 
 function showFormError(message) {
@@ -66,25 +49,6 @@ function showToast(message, type = "info") {
   setTimeout(hide, 3800);
 }
 
-async function parseError(response) {
-  try {
-    const data = await response.json();
-    if (data && typeof data.detail === "string") return data.detail;
-    if (Array.isArray(data.detail)) {
-      return data.detail.map((d) => d.msg || JSON.stringify(d)).join("; ");
-    }
-  } catch {
-    /* ignore */
-  }
-  return response.statusText || `Ошибка ${response.status}`;
-}
-
-function normalizeQuery(q) {
-  return String(q || "")
-    .trim()
-    .toLowerCase();
-}
-
 function contactMatches(c, q) {
   if (!q) return true;
   const hay = [c.full_name, c.phone, c.email, c.notes]
@@ -95,7 +59,7 @@ function contactMatches(c, q) {
 }
 
 function getFilteredContacts() {
-  const q = normalizeQuery(searchInput?.value);
+  const q = utils.normalizeQuery(searchInput?.value);
   return allContacts.filter((c) => contactMatches(c, q));
 }
 
@@ -139,7 +103,7 @@ function renderContactRows(contacts) {
     phoneTd.setAttribute("data-label", "Телефон");
     const phoneBody = document.createElement("div");
     phoneBody.className = "td-body";
-    phoneBody.textContent = formatPhoneRu(c.phone || "") || "—";
+    phoneBody.textContent = utils.formatPhoneRu(c.phone || "") || "—";
     phoneTd.appendChild(phoneBody);
 
     const emailTd = document.createElement("td");
@@ -153,7 +117,7 @@ function renderContactRows(contacts) {
     createdTd.setAttribute("data-label", "Создан");
     const createdBody = document.createElement("div");
     createdBody.className = "td-body";
-    createdBody.textContent = formatDate(c.created_at);
+    createdBody.textContent = utils.formatDate(c.created_at);
     createdTd.appendChild(createdBody);
 
     const actionsTd = document.createElement("td");
@@ -163,13 +127,13 @@ function renderContactRows(contacts) {
     const editBtn = document.createElement("button");
     editBtn.type = "button";
     editBtn.className = "btn ghost sm";
-    editBtn.append(iconEl("pencil"), spanLabel("Изменить"));
+    editBtn.append(utils.iconEl("pencil"), utils.spanLabel("Изменить"));
     editBtn.addEventListener("click", () => startEdit(c));
 
     const delBtn = document.createElement("button");
     delBtn.type = "button";
     delBtn.className = "btn danger sm";
-    delBtn.append(iconEl("trash-2"), spanLabel("Удалить"));
+    delBtn.append(utils.iconEl("trash-2"), utils.spanLabel("Удалить"));
     delBtn.addEventListener("click", () => removeContact(c.id, c.full_name));
 
     actionsTd.append(editBtn, delBtn);
@@ -180,7 +144,7 @@ function renderContactRows(contacts) {
 }
 
 function updateListStatus() {
-  const q = normalizeQuery(searchInput?.value);
+  const q = utils.normalizeQuery(searchInput?.value);
   if (allContacts.length === 0) {
     listStatus.textContent = "Контактов пока нет — добавьте первый.";
     table.hidden = true;
@@ -200,7 +164,7 @@ function updateListStatus() {
 }
 
 function applyFilterAndRender() {
-  const q = normalizeQuery(searchInput?.value);
+  const q = utils.normalizeQuery(searchInput?.value);
   if (allContacts.length === 0) {
     tbody.replaceChildren();
     updateListStatus();
@@ -224,69 +188,23 @@ async function loadContacts() {
   showSkeletonRows();
 
   try {
-    const res = await fetch(apiUrl("/api/contacts"));
-    if (!res.ok) {
-      allContacts = [];
-      tbody.replaceChildren();
-      listStatus.textContent = await parseError(res);
-      table.hidden = true;
-      return;
-    }
-
-    const items = await res.json();
+    const items = await api.fetchContacts();
     allContacts = Array.isArray(items) ? items : [];
     applyFilterAndRender();
+  } catch (err) {
+    allContacts = [];
+    tbody.replaceChildren();
+    listStatus.textContent = err.message;
+    table.hidden = true;
   } finally {
     refreshIcons();
   }
 }
 
-/**
- * Маска российского мобильного: +7 (XXX) XXX-XX-XX.
- * 8… → 7…; 10 цифр с 9… → 7…; иначе — группы цифр.
- */
-function formatPhoneRu(input) {
-  let d = String(input).replace(/\D/g, "");
-  if (d.length === 0) return "";
-  if (d.startsWith("8")) d = "7" + d.slice(1);
-  if (d.length === 10 && d[0] === "9") d = "7" + d;
-  d = d.slice(0, 11);
-  if (d[0] !== "7") {
-    return d.replace(/(\d{3})(?=\d)/g, "$1 ").trim();
-  }
-  const rest = d.slice(1);
-  let out = "+7";
-  if (rest.length === 0) return out;
-  out += " (" + rest.slice(0, Math.min(3, rest.length));
-  if (rest.length < 3) return out;
-  if (rest.length === 3) return out + ")";
-  out += ") " + rest.slice(3, Math.min(6, rest.length));
-  if (rest.length <= 6) return out;
-  const tail = rest.slice(6);
-  if (tail.length <= 2) return out + "-" + tail;
-  return out + "-" + tail.slice(0, 2) + "-" + tail.slice(2, 4);
-}
-
-function formatDate(iso) {
-  if (!iso) return "—";
-  const s = String(iso).trim();
-  const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (ymd) {
-    const [, y, m, d] = ymd;
-    return `${d}.${m}.${y}`;
-  }
-  const parsed = new Date(s.replace(" ", "T"));
-  if (Number.isNaN(parsed.getTime())) return s;
-  const d = String(parsed.getDate()).padStart(2, "0");
-  const m = String(parsed.getMonth() + 1).padStart(2, "0");
-  const y = parsed.getFullYear();
-  return `${d}.${m}.${y}`;
-}
-
 function startEdit(c) {
   contactIdInput.value = String(c.id);
   fullNameInput.value = c.full_name;
-  phoneInput.value = formatPhoneRu(c.phone || "");
+  phoneInput.value = utils.formatPhoneRu(c.phone || "");
   emailInput.value = c.email || "";
   notesInput.value = c.notes || "";
   formTitle.textContent = "Редактирование";
@@ -307,15 +225,14 @@ async function removeContact(id, name) {
   const ok = confirm(`Удалить контакт «${name}»?`);
   if (!ok) return;
 
-  const res = await fetch(apiUrl(`/api/contacts/${id}`), { method: "DELETE" });
-  if (!res.ok && res.status !== 204) {
-    const msg = await parseError(res);
-    showToast(msg, "error");
-    return;
+  try {
+    await api.deleteContact(id);
+    showToast(`Контакт «${name}» удалён`, "success");
+    await loadContacts();
+    if (contactIdInput.value === String(id)) resetForm();
+  } catch (err) {
+    showToast(err.message, "error");
   }
-  showToast(`Контакт «${name}» удалён`, "success");
-  await loadContacts();
-  if (contactIdInput.value === String(id)) resetForm();
 }
 
 form.addEventListener("submit", async (e) => {
@@ -326,40 +243,29 @@ form.addEventListener("submit", async (e) => {
   const payload = {
     full_name: fullNameInput.value.trim(),
     phone: phoneInput.value.trim(),
-    email: emailInput.value.trim(),
+    email: emailInput.value.trim() || null,
     notes: notesInput.value.trim(),
   };
 
-  let res;
-  if (id) {
-    res = await fetch(apiUrl(`/api/contacts/${id}`), {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-  } else {
-    res = await fetch(apiUrl("/api/contacts"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+  try {
+    if (id) {
+      await api.updateContact(id, payload);
+    } else {
+      await api.createContact(payload);
+    }
+    showToast(id ? "Контакт обновлён" : "Контакт сохранён", "success");
+    resetForm();
+    await loadContacts();
+  } catch (err) {
+    showFormError(err.message);
   }
-
-  if (!res.ok) {
-    showFormError(await parseError(res));
-    return;
-  }
-
-  showToast(id ? "Контакт обновлён" : "Контакт сохранён", "success");
-  resetForm();
-  await loadContacts();
 });
 
 resetBtn.addEventListener("click", resetForm);
 refreshBtn.addEventListener("click", () => loadContacts());
 
 phoneInput.addEventListener("input", () => {
-  const formatted = formatPhoneRu(phoneInput.value);
+  const formatted = utils.formatPhoneRu(phoneInput.value);
   phoneInput.value = formatted;
   const len = formatted.length;
   phoneInput.setSelectionRange(len, len);
