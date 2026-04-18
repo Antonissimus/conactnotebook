@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Контакты</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..700;1,14..32,400..700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <header class="header">
+      <h1>Менеджер контактов</h1>
+      <p class="subtitle">Локально и в Docker — запросы к <code>/api</code></p>
+    </header>
+
+    <main class="layout">
+      <section class="panel form-panel" aria-labelledby="form-title">
+        <h2 id="form-title" class="panel-title">Новый контакт</h2>
+        <p id="form-error" class="error" hidden></p>
+        <form id="contact-form" class="form">
+          <input type="hidden" id="contact-id" value="" />
+          <label class="field">
+            <span>Имя</span>
+            <input
+              id="full-name"
+              name="full_name"
+              type="text"
+              required
+              maxlength="200"
+              autocomplete="name"
+            />
+          </label>
+          <label class="field">
+            <span>Телефон</span>
+            <input
+              id="phone"
+              name="phone"
+              type="text"
+              inputmode="tel"
+              maxlength="18"
+              placeholder="+7 (999) 000-00-00"
+              autocomplete="tel"
+            />
+          </label>
+          <label class="field">
+            <span>Email</span>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              maxlength="200"
+              autocomplete="email"
+            />
+          </label>
+          <label class="field">
+            <span>Заметки</span>
+            <textarea id="notes" name="notes" rows="3" maxlength="2000"></textarea>
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="btn primary" id="submit-btn">
+              <i data-lucide="save" class="btn-icon" aria-hidden="true"></i>
+              <span id="submit-btn-label">Сохранить</span>
+            </button>
+            <button type="button" class="btn ghost" id="reset-btn">
+              <i data-lucide="rotate-ccw" class="btn-icon" aria-hidden="true"></i>
+              <span>Очистить</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel list-panel" aria-labelledby="list-title">
+        <div class="list-header">
+          <h2 id="list-title" class="panel-title">Список</h2>
+          <button type="button" class="btn ghost sm" id="refresh-btn">
+            <i data-lucide="refresh-cw" class="btn-icon" aria-hidden="true"></i>
+            <span>Обновить</span>
+          </button>
+        </div>
+        <label class="search-wrap" for="contact-search">
+          <i data-lucide="search" class="search-icon" aria-hidden="true"></i>
+          <input
+            type="search"
+            id="contact-search"
+            class="search-input"
+            placeholder="Поиск по имени, телефону, email, заметкам…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </label>
+        <p id="list-status" class="status">Загрузка…</p>
+        <div class="table-wrap">
+          <table class="table" id="contacts-table" hidden>
+            <thead>
+              <tr>
+                <th>Имя</th>
+                <th>Телефон</th>
+                <th>Email</th>
+                <th>Создан</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="contacts-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-relevant="additions"></div>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/lucide@0.462.0/dist/umd/lucide.min.js"
+      defer
+    ></script>
+    <script src="/js/app.js" defer></script>
+  </body>
+</html>

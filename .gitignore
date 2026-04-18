@@ -1,0 +1,29 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+contacts.db
+*.db
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Локальные секреты и переменные окружения
+.env
+.env.*
+!.env.example
+
+# Сборка / артефакты
+dist/
+build/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/*.log
+
+# ОС
+.DS_Store
+Thumbs.db
