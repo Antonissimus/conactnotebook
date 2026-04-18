@@ -1,38 +1,98 @@
 ---
 id: 01dcb624-e472-4207-be47-82ce51d4dadb
-title: "Contact Manager Architecture"
-description: "Contact Manager Architecture using FastAPI, SQLite, HTML, CSS, and JavaScript. This architecture is a simple and efficient way to manage contacts."
-tags: ["architecture", "contact", "manager", "fastapi", "sqlite", "html", "css", "javascript"]
+title: "Contact Manager Detailed Architecture"
+description: "Детальная схема приложения: FastAPI (Backend), SQLite (Database), Vanilla JS (Frontend) и Nginx (Docker)."
+tags: ["architecture", "fastapi", "sqlite", "nginx", "docker", "pydantic"]
 author: "Anton Kirillov"
 date: "2026-04-18"
-<delete>flowchart LR
- subgraph Client["Client Layer"]
-        HTML["HTML"]
-        CSS["CSS"]
-        VanillaJS["Vanilla JavaScript"]
-  end
 ---
-flowchart LR
- subgraph Client["Client Layer"]
-        HTML["HTML"]
-        CSS["CSS"]
-        VanillaJS["Vanilla JavaScript"]
-  end
- subgraph Server["Server Layer"]
-        FastAPI["FastAPI Backend"]
-        Routes["Routes Handler"]
-        ContactService["Contact Service"]
-  end
- subgraph Database["Data Layer"]
-        SQLite[("SQLite DB")]
-        Models["Data Models"]
-  end
-    HTML --> VanillaJS
-    CSS --> VanillaJS
-    VanillaJS -- HTTP Requests --> FastAPI
-    FastAPI -- HTTP Responses --> VanillaJS
-    FastAPI --> Routes
-    Routes --> ContactService
-    ContactService --> Models
-    Models --> SQLite
-    SQLite -- Query Results --> Models
+
+flowchart TB
+    %% Styling
+    classDef layer fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef component fill:#fff,stroke:#333,stroke-width:1px;
+    classDef data fill:#e1f5fe,stroke:#01579b,stroke-width:1px;
+
+    subgraph ClientLayer["Frontend Layer (static/)"]
+        direction TB
+        HTML["index.html (UI Layout)"]
+        CSS["styles.css (Visuals)"]
+        JS["app.js (Logic)"]
+        
+        subgraph JSFunctions["JS Logic (app.js)"]
+            JS_List["fetchContacts()"]
+            JS_Add["addContact()"]
+            JS_Update["updateContact()"]
+            JS_Delete["deleteContact()"]
+        end
+        
+        JS --- JS_List
+        JS --- JS_Add
+        JS --- JS_Update
+        JS --- JS_Delete
+    end
+
+    subgraph EntryLayer["Deployment / Entry"]
+        direction LR
+        Dev["Dev: FastAPI StaticFiles<br/>(SERVE_STATIC=1)"]
+        Docker["Docker: Nginx Proxy<br/>(:8080 -> :80)"]
+    end
+
+    subgraph BackendLayer["Backend Layer (FastAPI)"]
+        direction TB
+        Main["app/main.py (App Init & Middleware)"]
+        
+        subgraph API["API Routes (app/api/routes_contacts.py)"]
+            R_List["GET /api/contacts"]
+            R_Get["GET /api/contacts/{id}"]
+            R_Create["POST /api/contacts"]
+            R_Update["PUT /api/contacts/{id}"]
+            R_Delete["DELETE /api/contacts/{id}"]
+        end
+
+        subgraph Svc["Business Logic (app/services/contact_service.py)"]
+            S_List["list_contacts()"]
+            S_Get["get_contact()"]
+            S_Create["create_contact()"]
+            S_Update["update_contact()"]
+            S_Delete["delete_contact()"]
+        end
+
+        subgraph Models["Data Models (app/models/contact.py)"]
+            M_Base["ContactBase"]
+            M_Create["ContactCreate"]
+            M_Update["ContactUpdate"]
+            M_Full["Contact (ID + Timestamp)"]
+        end
+    end
+
+    subgraph DataLayer["Data Layer (SQLite)"]
+        direction TB
+        DB_Init["app/db.py (init_db, get_connection)"]
+        SQLite[("contacts.db")]
+        
+        subgraph Table["Table: contacts"]
+            Col1["id: INTEGER (PK)"]
+            Col2["full_name: TEXT"]
+            Col3["phone: TEXT"]
+            Col4["email: TEXT"]
+            Col5["notes: TEXT"]
+            Col6["created_at: TEXT"]
+        end
+    end
+
+    %% Connections
+    JSFunctions -- "fetch /api/contacts" --> EntryLayer
+    EntryLayer -- "Proxy /api" --> API
+    
+    Main --> API
+    API --> Svc
+    Svc --> Models
+    Svc --> DB_Init
+    DB_Init --> Table
+    Table --- SQLite
+
+    %% Apply Classes
+    class ClientLayer,EntryLayer,BackendLayer,DataLayer layer;
+    class HTML,CSS,JS,Main,Dev,Docker component;
+    class SQLite,Table data;
